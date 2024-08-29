@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import io
 import base64
+from sklearn.metrics import mean_squared_error, r2_score
+import numpy as np
 
 app = Flask(__name__)
 
@@ -49,11 +51,48 @@ def backtest():
 @app.route('/visualize')
 def visualize():
     try:
-        plt.figure(figsize=(12, 6))
-        sns.lineplot(x=data.index, y=data['Close'])
-        plt.title('Gold Price Over Time')
-        plt.xlabel('Date')
-        plt.ylabel('Price')
+        # Create multiple plots
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 18))
+
+        # Plot 1: Gold Price Over Time
+        sns.lineplot(x=data.index, y=data['Close'], ax=ax1)
+        ax1.set_title('Gold Price Over Time')
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Price')
+
+        # Plot 2: Correlation Heatmap
+        correlation = data[['Open', 'High', 'Low', 'Close', 'Volume']].corr()
+        sns.heatmap(correlation, annot=True, cmap='coolwarm', ax=ax2)
+        ax2.set_title('Correlation Heatmap')
+
+        # Plot 3: Model Performance Comparison
+        model_names = []
+        mse_scores = []
+        r2_scores = []
+
+        X = data.drop(['Close', 'Date'], axis=1)
+        y = data['Close']
+
+        for name, model in models.items():
+            predictions = model.predict(X)
+            mse = mean_squared_error(y, predictions)
+            r2 = r2_score(y, predictions)
+            model_names.append(name)
+            mse_scores.append(mse)
+            r2_scores.append(r2)
+
+        x = np.arange(len(model_names))
+        width = 0.35
+
+        ax3.bar(x - width/2, mse_scores, width, label='MSE')
+        ax3.bar(x + width/2, r2_scores, width, label='R2')
+        ax3.set_ylabel('Scores')
+        ax3.set_title('Model Performance Comparison')
+        ax3.set_xticks(x)
+        ax3.set_xticklabels(model_names, rotation=45, ha='right')
+        ax3.legend()
+
+        plt.tight_layout()
         
         img = io.BytesIO()
         plt.savefig(img, format='png')
