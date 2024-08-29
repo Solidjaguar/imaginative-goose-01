@@ -1,0 +1,46 @@
+# Data manipulation and analysis
+pandas
+numpy
+
+# Machine Learning and Deep Learning
+scikit-learn
+tensorflow
+keras
+
+# API and web framework
+fastapi
+uvicorn
+hypercorn
+
+# Data fetching and async operations
+aiohttp
+asyncio
+
+# Feature engineering
+ta
+
+# Hyperparameter tuning
+optuna
+
+# Model versioning
+mlflow
+
+# Environment variables
+python-dotenv
+
+# Logging
+loguru
+
+# Testing
+pytest
+pytest-asyncio
+
+# Utilities
+tenacity
+
+# Data visualization (optional, but useful for analysis)
+matplotlib
+seaborn
+
+# Jupyter notebooks (optional, for interactive development)
+jupyter

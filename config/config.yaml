@@ -1,0 +1,29 @@
+# Project Configuration
+
+# Paths
+data_dir: ./data
+models_dir: ./models
+
+# API Keys (your actual keys)
+alpha_vantage_api_key: XMTJLR6ZHLQ2JZJL
+fred_api_key: 64c5fd46f9f13ca6cb24ae0c2ebfb08d
+
+# Model file paths
+random_forest_model_path: models/random_forest_model.joblib
+lasso_model_path: models/lasso_model.joblib
+svr_model_path: models/svr_model.joblib
+xgb_model_path: models/xgb_model.joblib
+lgbm_model_path: models/lgbm_model.joblib
+lstm_model_path: models/lstm_model.h5
+
+# Other configuration settings
+look_back_period: 30
+prediction_days: 7
+
+# Logging
+log_level: INFO
+log_file: logs/app.log
+
+# Server settings
+host: 0.0.0.0
+port: 8080
