@@ -15,6 +15,7 @@ hypercorn
 # Data fetching and async operations
 aiohttp
 asyncio
+yfinance
 
 # Feature engineering
 ta
