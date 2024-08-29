@@ -1,80 +1,66 @@
-# Advanced Forex and Gold Prediction System
+# Gold Price Predictor
 
-This project is an advanced AI-driven system for predicting forex (EUR/USD) and gold prices using machine learning and deep learning techniques.
+This project is a web application that predicts gold prices using various machine learning models and provides backtesting functionality.
 
-## Features
-
-- Multiple prediction models including Random Forest, LSTM, XGBoost, and ensemble methods
-- Real-time data fetching from Alpha Vantage and FRED APIs
-- Advanced feature engineering and data processing
-- Backtesting framework for strategy evaluation
-- Paper trading simulation
-- Web interface for easy interaction with the system
-- Robust logging system for better debugging and monitoring
-- Model versioning for tracking different iterations of models
-- Comprehensive unit testing
-
-## Installation
+## Setup Instructions
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-repo-url/forex-gold-predictor.git
-   cd forex-gold-predictor
+   git clone https://github.com/yourusername/gold-price-predictor.git
+   cd gold-price-predictor
    ```
 
-2. Run the installation script:
+2. Create and activate a virtual environment:
    ```
-   bash install.sh
-   ```
-
-   Note: For Windows users, please follow the manual installation steps in the script.
-
-3. Install CUDA and cuDNN manually following NVIDIA's official guide.
-
-4. After CUDA and cuDNN installation, install TensorFlow with GPU support:
-   ```
-   pip install tensorflow==2.9.0
+   python3 -m venv venv
+   source venv/bin/activate
    ```
 
-## Usage
-
-1. Start the prediction system:
+3. Install the required dependencies:
    ```
-   python src/main.py
+   pip install -r requirements.txt
    ```
 
-2. Access the web interface at `http://localhost:8080`
+4. Run the Flask application:
+   ```
+   python app.py
+   ```
 
-## Configuration
+5. Access the application at `http://localhost:8080` in your web browser.
 
-- API keys and other configurations can be set in `config/config.yaml`
-- Adjust model parameters in `src/models/model_trainer.py`
+## Usage Guidelines
 
-## Logging
+1. **Predict Gold Prices**: 
+   - Fill in the form on the homepage with the required input features (Open, High, Low, Volume).
+   - Click "Predict" to get the predicted gold price.
 
-The system uses a robust logging mechanism. Logs are stored in the `logs/` directory and are rotated when they reach 500 MB in size. You can adjust the logging configuration in `src/utils/logger.py`.
+2. **Backtesting**:
+   - Click the "Run Backtest" button to perform backtesting on all implemented models.
+   - View the results, including MSE, Sharpe Ratio, and Total Return for each model.
 
-## Model Versioning
+3. **Visualization**:
+   - Click on the "View Gold Price Chart" link to see a visualization of historical gold prices.
 
-We use a custom model versioning system to keep track of different iterations of our models. Each model is saved with metadata including version number, timestamp, and performance metrics. You can find the implementation in `src/utils/model_versioner.py`.
-
-## Testing
+## Running Tests
 
 To run the unit tests:
 
 ```
-python -m unittest discover tests
+pytest tests/
 ```
+
+## Project Structure
+
+- `app.py`: Main Flask application
+- `src/`: Source code for data fetching, model training, and backtesting
+- `templates/`: HTML templates for the web interface
+- `tests/`: Unit tests
+- `config.json`: Configuration file for data fetching and model parameters
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+Please read `CONTRIBUTING.md` for details on our code of conduct and the process for submitting pull requests.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
-
-## Acknowledgments
-
-- Alpha Vantage for providing financial market data
-- FRED (Federal Reserve Economic Data) for economic indicators
+This project is licensed under the MIT License - see the `LICENSE` file for details.

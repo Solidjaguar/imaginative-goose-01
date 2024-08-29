@@ -3,81 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold Price Prediction</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Gold Price Predictor</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Gold Price Prediction</h1>
-    <div>
-        <h2>Predict Gold Price</h2>
-        <form id="predict-form">
-            <label for="usd-index">USD Index:</label>
-            <input type="number" id="usd-index" step="0.01" required><br><br>
-            <label for="oil-price">Oil Price:</label>
-            <input type="number" id="oil-price" step="0.01" required><br><br>
-            <label for="sp500">S&P 500:</label>
-            <input type="number" id="sp500" step="0.01" required><br><br>
-            <label for="treasury-yield">Treasury Yield:</label>
-            <input type="number" id="treasury-yield" step="0.01" required><br><br>
-            <label for="vix">VIX:</label>
-            <input type="number" id="vix" step="0.01" required><br><br>
-            <button type="submit">Predict</button>
-        </form>
-        <div id="prediction-results"></div>
-    </div>
-    <div>
-        <h2>Backtesting Results</h2>
-        <button id="run-backtest">Run Backtest</button>
-        <canvas id="backtest-chart"></canvas>
-    </div>
+    <h1>Gold Price Predictor</h1>
+    
+    <h2>Make a Prediction</h2>
+    <form id="prediction-form">
+        <label for="open">Open:</label>
+        <input type="number" id="open" name="open" required><br><br>
+        
+        <label for="high">High:</label>
+        <input type="number" id="high" name="high" required><br><br>
+        
+        <label for="low">Low:</label>
+        <input type="number" id="low" name="low" required><br><br>
+        
+        <label for="volume">Volume:</label>
+        <input type="number" id="volume" name="volume" required><br><br>
+        
+        <input type="submit" value="Predict">
+    </form>
+    
+    <div id="prediction-result"></div>
+    
+    <h2>Backtesting Results</h2>
+    <button id="backtest-button">Run Backtest</button>
+    <div id="backtest-results"></div>
+    
+    <h2>Visualization</h2>
+    <a href="/visualize">View Gold Price Chart</a>
+    
     <script>
-        document.getElementById('predict-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const features = {
-                'USD_Index': parseFloat(document.getElementById('usd-index').value),
-                'Oil_Price': parseFloat(document.getElementById('oil-price').value),
-                'SP500': parseFloat(document.getElementById('sp500').value),
-                'Treasury_Yield': parseFloat(document.getElementById('treasury-yield').value),
-                'VIX': parseFloat(document.getElementById('vix').value)
-            };
-            const response = await fetch('/predict', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(features)
-            });
-            const predictions = await response.json();
-            document.getElementById('prediction-results').innerHTML = JSON.stringify(predictions, null, 2);
-        });
-
-        document.getElementById('run-backtest').addEventListener('click', async () => {
-            const response = await fetch('/backtest');
-            const results = await response.json();
-            const ctx = document.getElementById('backtest-chart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(results),
-                    datasets: [{
-                        label: 'Total Return (%)',
-                        data: Object.values(results).map(r => r.total_return * 100),
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+        $(document).ready(function() {
+            $('#prediction-form').submit(function(e) {
+                e.preventDefault();
+                var formData = {
+                    open: parseFloat($('#open').val()),
+                    high: parseFloat($('#high').val()),
+                    low: parseFloat($('#low').val()),
+                    volume: parseFloat($('#volume').val())
+                };
+                
+                $.ajax({
+                    url: '/predict',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        $('#prediction-result').html('Predicted Price: $' + response[0].toFixed(2));
                     },
-                    {
-                        label: 'Sharpe Ratio',
-                        data: Object.values(results).map(r => r.sharpe_ratio),
-                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
+                    error: function(error) {
+                        console.log(error);
+                        $('#prediction-result').html('Error: ' + error.responseJSON.error);
                     }
-                }
+                });
+            });
+            
+            $('#backtest-button').click(function() {
+                $.ajax({
+                    url: '/backtest',
+                    type: 'GET',
+                    success: function(response) {
+                        var results = '';
+                        for (var model in response) {
+                            results += '<h3>' + model + '</h3>';
+                            results += '<p>MSE: ' + response[model].mse.toFixed(4) + '</p>';
+                            results += '<p>Sharpe Ratio: ' + response[model].sharpe_ratio.toFixed(4) + '</p>';
+                            results += '<p>Total Return: ' + (response[model].total_return * 100).toFixed(2) + '%</p>';
+                        }
+                        $('#backtest-results').html(results);
+                    },
+                    error: function(error) {
+                        console.log(error);
+                        $('#backtest-results').html('Error: ' + error.responseJSON.error);
+                    }
+                });
             });
         });
     </script>
