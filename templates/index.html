@@ -3,86 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Gold Price Predictor</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1, h2 {
-            color: #4a4a4a;
-        }
-        #prediction-container {
-            background-color: #f0f0f0;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .prediction {
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-        .positive {
-            color: green;
-        }
-        .negative {
-            color: red;
-        }
-    </style>
+    <title>Gold Price Prediction</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h1>AI Gold Price Predictor</h1>
-    <div id="prediction-container">
-        <h2>Latest Price: <span id="latest-price"></span></h2>
-        <h2>AI Prediction: <span id="ai-prediction" class="prediction"></span></h2>
-        <h2>Change Percentage: <span id="change-percentage"></span></h2>
-        <h2>Win Percentage: <span id="win-percentage"></span></h2>
-        <h2>Take Profit: <span id="take-profit"></span></h2>
-        <h2>Stop Loss: <span id="stop-loss"></span></h2>
+    <h1>Gold Price Prediction</h1>
+    <div>
+        <h2>Predict Gold Price</h2>
+        <form id="predict-form">
+            <label for="usd-index">USD Index:</label>
+            <input type="number" id="usd-index" step="0.01" required><br><br>
+            <label for="oil-price">Oil Price:</label>
+            <input type="number" id="oil-price" step="0.01" required><br><br>
+            <label for="sp500">S&P 500:</label>
+            <input type="number" id="sp500" step="0.01" required><br><br>
+            <label for="treasury-yield">Treasury Yield:</label>
+            <input type="number" id="treasury-yield" step="0.01" required><br><br>
+            <label for="vix">VIX:</label>
+            <input type="number" id="vix" step="0.01" required><br><br>
+            <button type="submit">Predict</button>
+        </form>
+        <div id="prediction-results"></div>
     </div>
-
+    <div>
+        <h2>Backtesting Results</h2>
+        <button id="run-backtest">Run Backtest</button>
+        <canvas id="backtest-chart"></canvas>
+    </div>
     <script>
-        async function fetchPrediction() {
-            try {
-                const response = await fetch('/prediction');
-                const data = await response.json();
-                
-                if (data.error) {
-                    alert(data.error);
-                    return;
+        document.getElementById('predict-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const features = {
+                'USD_Index': parseFloat(document.getElementById('usd-index').value),
+                'Oil_Price': parseFloat(document.getElementById('oil-price').value),
+                'SP500': parseFloat(document.getElementById('sp500').value),
+                'Treasury_Yield': parseFloat(document.getElementById('treasury-yield').value),
+                'VIX': parseFloat(document.getElementById('vix').value)
+            };
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(features)
+            });
+            const predictions = await response.json();
+            document.getElementById('prediction-results').innerHTML = JSON.stringify(predictions, null, 2);
+        });
+
+        document.getElementById('run-backtest').addEventListener('click', async () => {
+            const response = await fetch('/backtest');
+            const results = await response.json();
+            const ctx = document.getElementById('backtest-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(results),
+                    datasets: [{
+                        label: 'Total Return (%)',
+                        data: Object.values(results).map(r => r.total_return * 100),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    },
+                    {
+                        label: 'Sharpe Ratio',
+                        data: Object.values(results).map(r => r.sharpe_ratio),
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
                 }
-
-                const latestPrice = data.latest_price;
-                const prediction = data.prediction_data.prediction;
-                const changePercentage = data.prediction_data.change_percentage;
-
-                document.getElementById('latest-price').textContent = `$${latestPrice} (${data.latest_date})`;
-                document.getElementById('ai-prediction').textContent = `$${prediction}`;
-                document.getElementById('change-percentage').textContent = `${changePercentage}%`;
-                document.getElementById('win-percentage').textContent = `${data.prediction_data.win_percentage}%`;
-                document.getElementById('take-profit').textContent = `$${data.prediction_data.take_profit}`;
-                document.getElementById('stop-loss').textContent = `$${data.prediction_data.stop_loss}`;
-
-                const predictionElement = document.getElementById('ai-prediction');
-                if (changePercentage > 0) {
-                    predictionElement.classList.add('positive');
-                    predictionElement.classList.remove('negative');
-                } else {
-                    predictionElement.classList.add('negative');
-                    predictionElement.classList.remove('positive');
-                }
-
-            } catch (error) {
-                console.error('Error fetching prediction:', error);
-                alert('Failed to fetch prediction. Please try again later.');
-            }
-        }
-
-        fetchPrediction();
-        // Update every hour
-        setInterval(fetchPrediction, 3600000);
+            });
+        });
     </script>
 </body>
 </html>

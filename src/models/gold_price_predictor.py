@@ -1,106 +1,81 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.ensemble import RandomForestRegressor
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
-import optuna
-from loguru import logger
+from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
+import json
 
 class GoldPricePredictor:
     def __init__(self):
+        self.models = {}
         self.scaler = StandardScaler()
-        self.models = {
-            'linear': None,
-            'random_forest': None,
-            'lstm': None
-        }
+        with open('config.json', 'r') as f:
+            self.config = json.load(f)
 
-    def prepare_data(self, data, sequence_length=10):
-        X = []
-        y = []
-        for i in range(len(data) - sequence_length):
-            X.append(data[i:(i + sequence_length)])
-            y.append(data[i + sequence_length])
-        X = np.array(X)
-        y = np.array(y)
-        X = self.scaler.fit_transform(X.reshape(-1, X.shape[-1])).reshape(X.shape)
-        return X, y
+    def prepare_data(self, data):
+        X = data.drop('Gold_Price', axis=1)
+        y = data['Gold_Price']
+        X_scaled = self.scaler.fit_transform(X)
+        return X_scaled, y.values
 
-    def create_lstm_model(self, input_shape, units=50, dropout=0.2, learning_rate=0.001):
-        model = Sequential([
-            LSTM(units, return_sequences=True, input_shape=input_shape),
-            Dropout(dropout),
-            LSTM(units),
-            Dropout(dropout),
-            Dense(1)
-        ])
-        model.compile(optimizer=Adam(learning_rate=learning_rate), loss='mse')
-        return model
-
-    def optimize_random_forest(self, X, y):
-        def objective(trial):
-            params = {
-                'n_estimators': trial.suggest_int('n_estimators', 50, 300),
-                'max_depth': trial.suggest_int('max_depth', 3, 10),
-                'min_samples_split': trial.suggest_int('min_samples_split', 2, 10),
-                'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 10)
-            }
-            model = RandomForestRegressor(**params, random_state=42)
-            return -np.mean(cross_val_score(model, X, y, cv=5, scoring='neg_mean_squared_error'))
-
-        study = optuna.create_study(direction='minimize')
-        study.optimize(objective, n_trials=50)
-        return study.best_params
+    def create_sequences(self, X, y, time_steps=10):
+        Xs, ys = [], []
+        for i in range(len(X) - time_steps):
+            Xs.append(X[i:(i + time_steps)])
+            ys.append(y[i + time_steps])
+        return np.array(Xs), np.array(ys)
 
     def train_models(self, X, y):
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-self.config['model']['train_size'], random_state=self.config['model']['random_state'])
 
-        logger.info("Training Linear Regression model...")
+        # Linear Regression
         self.models['linear'] = LinearRegression()
-        self.models['linear'].fit(X_train.reshape(X_train.shape[0], -1), y_train)
+        self.models['linear'].fit(X_train, y_train)
 
-        logger.info("Optimizing and training Random Forest model...")
-        rf_params = self.optimize_random_forest(X_train.reshape(X_train.shape[0], -1), y_train)
-        self.models['random_forest'] = RandomForestRegressor(**rf_params, random_state=42)
-        self.models['random_forest'].fit(X_train.reshape(X_train.shape[0], -1), y_train)
+        # Random Forest
+        self.models['random_forest'] = RandomForestRegressor(n_estimators=100, random_state=self.config['model']['random_state'])
+        self.models['random_forest'].fit(X_train, y_train)
 
-        logger.info("Training LSTM model...")
-        self.models['lstm'] = self.create_lstm_model(input_shape=(X_train.shape[1], X_train.shape[2]))
-        early_stopping = EarlyStopping(patience=10, restore_best_weights=True)
-        self.models['lstm'].fit(
-            X_train, y_train,
-            epochs=100,
-            batch_size=32,
-            validation_data=(X_val, y_val),
-            callbacks=[early_stopping],
-            verbose=0
-        )
+        # LSTM
+        X_train_seq, y_train_seq = self.create_sequences(X_train, y_train)
+        X_test_seq, y_test_seq = self.create_sequences(X_test, y_test)
+
+        self.models['lstm'] = Sequential([
+            LSTM(units=self.config['model']['lstm_units'], return_sequences=True, input_shape=(X_train_seq.shape[1], X_train_seq.shape[2])),
+            Dropout(self.config['model']['lstm_dropout']),
+            LSTM(units=self.config['model']['lstm_units']),
+            Dropout(self.config['model']['lstm_dropout']),
+            Dense(1)
+        ])
+        self.models['lstm'].compile(optimizer='adam', loss='mse')
+        self.models['lstm'].fit(X_train_seq, y_train_seq, epochs=50, batch_size=32, validation_split=0.1, verbose=0)
+
+        # XGBoost
+        self.models['xgboost'] = XGBRegressor(random_state=self.config['model']['random_state'])
+        self.models['xgboost'].fit(X_train, y_train)
+
+        # LightGBM
+        self.models['lightgbm'] = LGBMRegressor(random_state=self.config['model']['random_state'])
+        self.models['lightgbm'].fit(X_train, y_train)
 
     def predict(self, X):
+        X_scaled = self.scaler.transform(X)
         predictions = {}
         for name, model in self.models.items():
             if name == 'lstm':
-                predictions[name] = model.predict(X)
+                X_seq, _ = self.create_sequences(X_scaled, np.zeros(len(X_scaled)))
+                predictions[name] = model.predict(X_seq).flatten()
             else:
-                predictions[name] = model.predict(X.reshape(X.shape[0], -1))
+                predictions[name] = model.predict(X_scaled)
         return predictions
 
-    def evaluate(self, y_true, predictions):
-        results = {}
-        for name, y_pred in predictions.items():
-            results[name] = {
-                'mse': mean_squared_error(y_true, y_pred),
-                'mae': mean_absolute_error(y_true, y_pred),
-                'r2': r2_score(y_true, y_pred)
-            }
-        return results
-
-    def plot_predictions(self, y_true, predictions):
-        # Implement this method in the visualizer module
-        pass
+def train_and_evaluate(data):
+    predictor = GoldPricePredictor()
+    X, y = predictor.prepare_data(data)
+    predictor.train_models(X, y)
+    return predictor
